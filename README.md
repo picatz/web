@@ -44,9 +44,20 @@ import (
 )
 
 func main() {
-  server, _ := web.NewServer()
+  logger := log.New(os.Stderr, "example-web-server: ", log.LstdFlags)
+
+  helloWorld := func(w http.ResponseWriter, r *http.Request) {
+    w.Write([]byte("Hello World!"))
+  }
+
+  server, _ := web.NewServer(
+    WithRoutes(
+      Routes{"/": helloWorld},
+      MiddlewareLogRequest(logger),
+      MiddlewareLimitRequestBody(web.DefaultRequestBodySize),
+    ),
+  )
 
   web.Serve(server, nil, "", "")
 }
-
 ```
