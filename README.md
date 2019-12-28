@@ -1,5 +1,5 @@
 # web
-> 🕸 HTTP client and server
+> 🕸 Your friendly neighborhood HTTP client and server
 
 ## Download
 
