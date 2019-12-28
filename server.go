@@ -81,13 +81,16 @@ func WithServerIdleTimeout(d time.Duration) ServerOption {
 	}
 }
 
-type HandleFuncPaths = map[string]func(http.ResponseWriter, *http.Request)
+type Routes = map[string]func(http.ResponseWriter, *http.Request)
 
-func WithHandleFuncs(h HandleFuncPaths) ServerOption {
+func WithRoutes(r Routes, m ...RouteMiddleware) ServerOption {
 	return func(s *http.Server) error {
 		var mux = http.NewServeMux()
 
-		for path, handleFunc := range h {
+		for path, handleFunc := range r {
+			for _, middleware := range m {
+				handleFunc = middleware(handleFunc)
+			}
 			mux.HandleFunc(path, handleFunc)
 		}
 
