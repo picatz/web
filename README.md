@@ -51,10 +51,10 @@ func main() {
   }
 
   server, _ := web.NewServer(
-    WithRoutes(
-      Routes{"/": helloWorld},
-      MiddlewareLogRequest(logger),
-      MiddlewareLimitRequestBody(web.DefaultRequestBodySize),
+    web.WithRoutes(
+      web.Routes{"/": helloWorld},
+      web.MiddlewareLogRequest(logger),
+      web.MiddlewareLimitRequestBody(web.DefaultRequestBodySize),
     ),
   )
 
