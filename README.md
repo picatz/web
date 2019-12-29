@@ -38,7 +38,9 @@ func main() {
 package main
 
 import (
-  "fmt"
+  "log"
+  "net/http"
+  "os"
 
   "github.com/picatz/web"
 )
