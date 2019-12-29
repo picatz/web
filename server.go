@@ -114,6 +114,13 @@ func WithServerDefaultTLSConfig() ServerOption {
 	}
 }
 
+func WithAddr(addr string) ServerOption {
+	return func(s *http.Server) error {
+		s.Addr = addr
+		return nil
+	}
+}
+
 func Serve(s *http.Server, l *log.Logger, certFile, keyFile string) {
 	if l == nil {
 		l = log.New(os.Stderr, "web-server-error: ", log.LstdFlags)
