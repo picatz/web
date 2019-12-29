@@ -8,12 +8,14 @@ import (
 	"time"
 )
 
+// Default server timeout values.
 var (
 	DefaultServerReadTimeout  = 5 * time.Second
 	DefaultServerWriteTimeout = 5 * time.Second
 	DefaultServerIdleTimeout  = 10 * time.Second
 )
 
+// DefaultServerTLSConfigCipherSuites contains TLS cipher configuration.
 var DefaultServerTLSConfigCipherSuites = []uint16{
 	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 	tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
@@ -21,6 +23,7 @@ var DefaultServerTLSConfigCipherSuites = []uint16{
 	tls.TLS_RSA_WITH_AES_256_CBC_SHA,
 }
 
+// DefaultServerTLSConfig defines the default TLS configuration for a server.
 var DefaultServerTLSConfig = &tls.Config{
 	MinVersion:               tls.VersionTLS12,
 	CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
@@ -28,10 +31,14 @@ var DefaultServerTLSConfig = &tls.Config{
 	PreferServerCipherSuites: true,
 }
 
+// DefaultServerTLSNextProto defines the default TLS protocol logic for a server.
 var DefaultServerTLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler), 0)
 
+// ServerOption is a function which always for server configurations.
 type ServerOption = func(*http.Server) error
 
+// NewServer simplifies the creation of a new HTTP server using an optional list
+// of ServerOptions for configuration.
 func NewServer(opts ...ServerOption) (*http.Server, error) {
 	var mux = http.NewServeMux()
 
@@ -52,6 +59,8 @@ func NewServer(opts ...ServerOption) (*http.Server, error) {
 	return server, nil
 }
 
+// WithDefaultServerOptions provides an example method to use
+// with the NewServer options using the default timeout values.
 func WithDefaultServerOptions() []ServerOption {
 	return []ServerOption{
 		WithServerReadTimeout(DefaultServerReadTimeout),
@@ -60,6 +69,7 @@ func WithDefaultServerOptions() []ServerOption {
 	}
 }
 
+// WithServerReadTimeout can change the server's read timeout.
 func WithServerReadTimeout(d time.Duration) ServerOption {
 	return func(s *http.Server) error {
 		s.ReadTimeout = d
@@ -67,6 +77,7 @@ func WithServerReadTimeout(d time.Duration) ServerOption {
 	}
 }
 
+// WithServerWriteTimeout can change the server's write timeout.
 func WithServerWriteTimeout(d time.Duration) ServerOption {
 	return func(s *http.Server) error {
 		s.WriteTimeout = d
@@ -74,6 +85,7 @@ func WithServerWriteTimeout(d time.Duration) ServerOption {
 	}
 }
 
+// WithServerIdleTimeout can change the server's idle timeout.
 func WithServerIdleTimeout(d time.Duration) ServerOption {
 	return func(s *http.Server) error {
 		s.IdleTimeout = d
@@ -81,8 +93,12 @@ func WithServerIdleTimeout(d time.Duration) ServerOption {
 	}
 }
 
-type Routes = map[string]func(http.ResponseWriter, *http.Request)
+// Routes contains a { key -> value } mapping of { pathString -> http.HandlerFunc }
+type Routes = map[string]http.HandlerFunc
 
+// WithRoutes allows for custom routes to be added to a server.
+//
+// Note: you can only use this method once within a NewServer method.
 func WithRoutes(r Routes, m ...RouteMiddleware) ServerOption {
 	return func(s *http.Server) error {
 		var mux = http.NewServeMux()
@@ -100,6 +116,7 @@ func WithRoutes(r Routes, m ...RouteMiddleware) ServerOption {
 	}
 }
 
+// WithServerTLSConfig can change the server's TLS configurations.
 func WithServerTLSConfig(c *tls.Config) ServerOption {
 	return func(s *http.Server) error {
 		s.TLSConfig = c
@@ -107,6 +124,7 @@ func WithServerTLSConfig(c *tls.Config) ServerOption {
 	}
 }
 
+// WithServerDefaultTLSConfig configures the server to use the DefaultServerTLSConfig.
 func WithServerDefaultTLSConfig() ServerOption {
 	return func(s *http.Server) error {
 		s.TLSConfig = DefaultServerTLSConfig
@@ -114,6 +132,7 @@ func WithServerDefaultTLSConfig() ServerOption {
 	}
 }
 
+// WithAddr configures the IP address and port to sserve requests.
 func WithAddr(addr string) ServerOption {
 	return func(s *http.Server) error {
 		s.Addr = addr
@@ -121,6 +140,7 @@ func WithAddr(addr string) ServerOption {
 	}
 }
 
+// Serve starts the listener.
 func Serve(s *http.Server, l *log.Logger, certFile, keyFile string) {
 	if l == nil {
 		l = log.New(os.Stderr, "web-server-error: ", log.LstdFlags)
