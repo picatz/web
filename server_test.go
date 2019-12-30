@@ -75,6 +75,7 @@ func TestNewServerWithGoogleOauth(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	t.Log(server)
 	// go test -v -timeout 30m github.com/picatz/web -run TestNewServerWithGoogleOauth
 	// Serve(server, nil, "", "")
 }
