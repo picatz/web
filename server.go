@@ -172,7 +172,7 @@ func WithAddr(addr string) ServerOption {
 // WithInMemoryCookieStore configures an in-memory cookie store.
 func WithInMemoryCookieStore(keyPairs ...[]byte) ServerOption {
 	return func(s *http.Server) error {
-		store = sessions.NewCookieStore(keyPairs...)
+		Store = sessions.NewCookieStore(keyPairs...)
 		return nil
 	}
 }

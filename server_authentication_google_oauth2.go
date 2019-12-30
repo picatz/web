@@ -91,7 +91,7 @@ func oauthGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//fmt.Fprintf(w, "UserInfo: %s, %s, %s\n", authData.ID, authData.Email, authData.Name)
-	session, _ := store.Get(r, "oauthstate")
+	session, _ := Store.Get(r, "oauthstate")
 
 	// setup the session
 	session.Values["authenticated"] = true
@@ -134,7 +134,7 @@ type Oauth2GoogleOption func(*Oauth2GoogleAuthenticator) error
 
 func NewOauth2GoogleAuthenticator(opts ...Oauth2GoogleOption) (Authenticator, error) {
 	a := &Oauth2GoogleAuthenticator{
-		store:     store,
+		store:     Store,
 		redirects: &oauth2GoogleAuthenticatorRedirects{},
 	}
 
@@ -171,7 +171,7 @@ func WithRedirectOnLogout(url string) Oauth2GoogleOption {
 
 func WithCookieStoreForOauth2Google(givenStore *sessions.CookieStore) Oauth2GoogleOption {
 	if givenStore == nil {
-		givenStore = store // default store
+		givenStore = Store // default store
 	}
 
 	return func(a *Oauth2GoogleAuthenticator) error {

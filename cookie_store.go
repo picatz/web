@@ -21,5 +21,5 @@ func GenerateNewCookiStore() *sessions.CookieStore {
 }
 
 var (
-	store = GenerateNewCookiStore()
+	Store = GenerateNewCookiStore()
 )
