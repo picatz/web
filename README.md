@@ -67,11 +67,11 @@ func main() {
 
 ## Server Authentication
 
-A simple Google Oauth2 authenticator implementation is built in:
+A simple [Google Oauth2](https://support.google.com/googleapi/answer/6158849?hl=en) authenticator implementation is built in:
 
 ```console
-$
-
+$ export GOOGLE_OAUTH_CLIENT_ID="..."
+$ export GOOGLE_OAUTH_CLIENT_SECRET="..."
 ```
 
 ```go
