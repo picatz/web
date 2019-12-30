@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/gorilla/sessions"
 )
 
 // Default server timeout values.
@@ -43,6 +45,7 @@ func NewServer(opts ...ServerOption) (*http.Server, error) {
 	var mux = http.NewServeMux()
 
 	var server = &http.Server{
+		Addr:         "127.0.0.1:8080",
 		Handler:      mux,
 		ReadTimeout:  DefaultServerReadTimeout,
 		WriteTimeout: DefaultServerWriteTimeout,
@@ -96,6 +99,32 @@ func WithServerIdleTimeout(d time.Duration) ServerOption {
 // Routes contains a { key -> value } mapping of { pathString -> http.HandlerFunc }
 type Routes = map[string]http.HandlerFunc
 
+// JoinRoutes takes multiple Routes objects and merges them into one Routes object.
+func JoinRoutes(r ...Routes) Routes {
+	newRoutes := Routes{}
+
+	for _, routes := range r {
+		for path, handlerFunc := range routes {
+			newRoutes[path] = handlerFunc
+		}
+	}
+
+	return newRoutes
+}
+
+// AuthenticatedRoutes takes multiple Routes and requires them all to be authenticated.
+func AuthenticatedRoutes(a Authenticator, r ...Routes) Routes {
+	newRoutes := Routes{}
+
+	for _, routes := range r {
+		for path, handlerFunc := range routes {
+			newRoutes[path] = a.RequireAuthentication(handlerFunc)
+		}
+	}
+
+	return newRoutes
+}
+
 // WithRoutes allows for custom routes to be added to a server.
 //
 // Note: you can only use this method once within a NewServer method.
@@ -136,6 +165,14 @@ func WithServerDefaultTLSConfig() ServerOption {
 func WithAddr(addr string) ServerOption {
 	return func(s *http.Server) error {
 		s.Addr = addr
+		return nil
+	}
+}
+
+// WithInMemoryCookieStore configures an in-memory cookie store.
+func WithInMemoryCookieStore(keyPairs ...[]byte) ServerOption {
+	return func(s *http.Server) error {
+		store = sessions.NewCookieStore(keyPairs...)
 		return nil
 	}
 }
