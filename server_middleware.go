@@ -1,8 +1,11 @@
 package web
 
 import (
+	"io"
 	"log"
 	"net/http"
+
+	"golang.org/x/crypto/ssh"
 )
 
 type RouteMiddleware func(http.HandlerFunc) http.HandlerFunc
@@ -50,4 +53,27 @@ func MiddlewareContentTypeUTF8(contentType string) RouteMiddleware {
 
 func MiddlewareContentTypeJSON() RouteMiddleware {
 	return MiddlewareContentTypeUTF8("application/json")
+}
+
+func MiddlewareSSHProxy(sshAddr string, cfg *ssh.ClientConfig, remoteAddr string) RouteMiddleware {
+	return func(h http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			// Establish connection with SSH server
+			conn, err := ssh.Dial("tcp", sshAddr, cfg)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			defer conn.Close()
+
+			// Establish connection with remote server
+			remote, err := conn.Dial("tcp", remoteAddr)
+			if err != nil {
+				log.Fatalln(err)
+			}
+			defer remote.Close()
+
+			io.Copy(remote, r.Body)
+			h(w, r)
+		}
+	}
 }
