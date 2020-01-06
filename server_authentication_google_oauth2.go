@@ -83,7 +83,8 @@ type oauth2GoogleAuthenticatorRedirects struct {
 type Oauth2GoogleAuthenticator struct {
 	store *sessions.CookieStore
 
-	redirects *oauth2GoogleAuthenticatorRedirects
+	redirects    *oauth2GoogleAuthenticatorRedirects
+	authCallback func(http.ResponseWriter, *http.Request) error
 }
 
 type Oauth2GoogleOption func(*Oauth2GoogleAuthenticator) error
@@ -102,6 +103,13 @@ func NewOauth2GoogleAuthenticator(opts ...Oauth2GoogleOption) (Authenticator, er
 	}
 
 	return a, nil
+}
+
+func WithAuthCallback(cb func(http.ResponseWriter, *http.Request) error) Oauth2GoogleOption {
+	return func(a *Oauth2GoogleAuthenticator) error {
+		a.authCallback = cb
+		return nil
+	}
 }
 
 func WithRedirectOnAuthFailure(url string) Oauth2GoogleOption {
@@ -285,6 +293,13 @@ func (a *Oauth2GoogleAuthenticator) callback(w http.ResponseWriter, r *http.Requ
 	session.Save(r, w)
 
 	log.Println("authenticated:", r.RemoteAddr)
+
+	err = a.authCallback(w, r)
+	if err != nil {
+		log.Println(err.Error())
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
 	return
 }
