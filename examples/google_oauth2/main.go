@@ -14,6 +14,7 @@ func main() {
 
 	authenticator, _ := web.NewOauth2GoogleAuthenticator(
 		web.WithRedirectToLoginOnAuthFailure(),
+		web.WithRedirectOnLogout("https://www.google.com/accounts/Logout?continue=https://appengine.google.com/_ah/logout?continue=http://localhost:8080/"),
 	)
 
 	tmpl, _ := template.New("homePage").Parse(`
@@ -23,7 +24,6 @@ func main() {
 
 		<body>
 			Hello {{.}}
-
 			<a href="/auth/google/logout">Logout</a>
 		</body>
 	`)
