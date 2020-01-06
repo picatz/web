@@ -58,50 +58,6 @@ func generateStateOauthCookie(w http.ResponseWriter) string {
 	return state
 }
 
-func oauthGoogleCallback(w http.ResponseWriter, r *http.Request) {
-	oauthState, _ := r.Cookie("oauthstate")
-
-	if r.FormValue("state") != oauthState.Value {
-		log.Println("invalid oauth google state")
-		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-		return
-	}
-
-	data, err := getUserDataFromGoogle(r.FormValue("code"))
-	if err != nil {
-		log.Println(err.Error())
-		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-		return
-	}
-
-	decoder := json.NewDecoder(bytes.NewReader(data))
-
-	authData := googleAuthData{}
-	err = decoder.Decode(&authData)
-	if err != nil {
-		log.Println(err.Error())
-		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
-		return
-	}
-
-	// never allow unverified emails to access the application
-	if !authData.VerifiedEmail {
-		http.Error(w, "Forbidden", http.StatusForbidden)
-		return
-	}
-
-	//fmt.Fprintf(w, "UserInfo: %s, %s, %s\n", authData.ID, authData.Email, authData.Name)
-	session, _ := Store.Get(r, "oauthstate")
-
-	// setup the session
-	session.Values["authenticated"] = true
-	session.Values["name"] = authData.Name
-	session.Values["email"] = authData.Email
-	session.Save(r, w)
-
-	http.Redirect(w, r, "/", http.StatusPermanentRedirect)
-}
-
 func getUserDataFromGoogle(code string) ([]byte, error) {
 	token, err := googleOauthConfig.Exchange(context.Background(), code)
 	if err != nil {
@@ -190,6 +146,7 @@ func (a *Oauth2GoogleAuthenticator) Routes() Routes {
 
 func (a *Oauth2GoogleAuthenticator) ReadSessionValue(w http.ResponseWriter, r *http.Request, key string) (interface{}, bool) {
 	session, err := a.store.Get(r, "oauthstate")
+	log.Println(err)
 
 	if err != nil {
 		return nil, false
@@ -229,6 +186,8 @@ func (a *Oauth2GoogleAuthenticator) RequireAuthentication(h http.HandlerFunc) ht
 func (a *Oauth2GoogleAuthenticator) IsAuthenticated(w http.ResponseWriter, r *http.Request) bool {
 	session, err := a.store.Get(r, "oauthstate")
 
+	log.Println(err)
+
 	if err != nil {
 		return false
 	}
@@ -244,29 +203,48 @@ func (a *Oauth2GoogleAuthenticator) IsAuthenticated(w http.ResponseWriter, r *ht
 }
 
 func (a *Oauth2GoogleAuthenticator) Authenticate(w http.ResponseWriter, r *http.Request) {
-	log.Println("attempting to authenticate:", r.RemoteAddr)
+	log.Println("attempting to authenticate:", r.RemoteAddr, "from", r.Referer())
 	oauthState := generateStateOauthCookie(w)
 	u := googleOauthConfig.AuthCodeURL(oauthState)
 	http.Redirect(w, r, u, http.StatusTemporaryRedirect)
+	return
 }
 
 func (a *Oauth2GoogleAuthenticator) Deauthenticate(w http.ResponseWriter, r *http.Request) {
-	session, _ := a.store.Get(r, "oauthstate")
+	log.Println("attempting to deauthenticate:", r.RemoteAddr, "from", r.Referer())
+	session, err := a.store.Get(r, "oauthstate")
+	if err != nil {
+		log.Println(err)
+	}
+
 	session.Values["authenticated"] = false
 	session.Options.MaxAge = -1
 
-	err := session.Save(r, w)
+	err = session.Save(r, w)
 
 	if err != nil {
 		http.Error(w, "Session save failure", http.StatusInternalServerError)
 		return
 	}
 
-	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+	log.Println("deauthenticated:", r.RemoteAddr, "from", r.Referer())
+
+	if a.redirects != nil && a.redirects.logout != "" {
+		http.Redirect(w, r, a.redirects.logout, http.StatusPermanentRedirect)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusPermanentRedirect)
+	return
 }
 
 func (a *Oauth2GoogleAuthenticator) callback(w http.ResponseWriter, r *http.Request) {
-	oauthState, _ := r.Cookie("oauthstate")
+	oauthState, err := r.Cookie("oauthstate")
+	if err != nil {
+		log.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	if r.FormValue("state") != oauthState.Value {
 		log.Println("invalid oauth google state")
@@ -308,4 +286,5 @@ func (a *Oauth2GoogleAuthenticator) callback(w http.ResponseWriter, r *http.Requ
 
 	log.Println("authenticated:", r.RemoteAddr)
 	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+	return
 }
