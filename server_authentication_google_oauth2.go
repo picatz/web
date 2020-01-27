@@ -105,6 +105,13 @@ func NewOauth2GoogleAuthenticator(opts ...Oauth2GoogleOption) (Authenticator, er
 	return a, nil
 }
 
+func WithAuthRedirectURL(url string) Oauth2GoogleOption {
+	return func(a *Oauth2GoogleAuthenticator) error {
+		googleOauthConfig.RedirectURL = url
+		return nil
+	}
+}
+
 func WithAuthCallback(cb func(http.ResponseWriter, *http.Request) error) Oauth2GoogleOption {
 	return func(a *Oauth2GoogleAuthenticator) error {
 		a.authCallback = cb
