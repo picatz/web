@@ -186,8 +186,14 @@ func (a *Oauth2GoogleAuthenticator) ReadSessionValue(w http.ResponseWriter, r *h
 
 func (a *Oauth2GoogleAuthenticator) RequireAuthentication(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		log.Println("verifying request is authenticated")
 		if !a.IsAuthenticated(w, r) {
 			if a.redirects != nil && a.redirects.authFailure != "" {
+				log.Println("redirecting due to auth failure to:", a.redirects.authFailure)
+				w.Header().Set("Cache-Control", "no-cache, private, max-age=0")
+				w.Header().Set("Expires", time.Unix(0, 0).Format(http.TimeFormat))
+				w.Header().Set("Pragma", "no-cache")
+				w.Header().Set("X-Accel-Expires", "0")
 				http.Redirect(w, r, a.redirects.authFailure, http.StatusPermanentRedirect)
 			} else {
 				http.NotFound(w, r)
@@ -199,11 +205,11 @@ func (a *Oauth2GoogleAuthenticator) RequireAuthentication(h http.HandlerFunc) ht
 }
 
 func (a *Oauth2GoogleAuthenticator) IsAuthenticated(w http.ResponseWriter, r *http.Request) bool {
+	log.Println("checking is request is authenticated")
 	session, err := a.store.Get(r, "oauthstate")
 
-	log.Println(err)
-
 	if err != nil {
+		log.Println(err)
 		return false
 	}
 
@@ -211,9 +217,11 @@ func (a *Oauth2GoogleAuthenticator) IsAuthenticated(w http.ResponseWriter, r *ht
 	auth, ok := session.Values["authenticated"].(bool)
 
 	if !ok || !auth {
+		log.Println("request is NOT authenticated")
 		return false
 	}
 
+	log.Println("request is authenticated")
 	return true
 }
 
@@ -221,6 +229,7 @@ func (a *Oauth2GoogleAuthenticator) Authenticate(w http.ResponseWriter, r *http.
 	log.Println("attempting to authenticate:", r.RemoteAddr, "from", r.Referer())
 	oauthState := generateStateOauthCookie(w)
 	u := googleOauthConfig.AuthCodeURL(oauthState)
+	log.Println("redirecting to google")
 	http.Redirect(w, r, u, http.StatusTemporaryRedirect)
 	return
 }
@@ -254,6 +263,7 @@ func (a *Oauth2GoogleAuthenticator) Deauthenticate(w http.ResponseWriter, r *htt
 }
 
 func (a *Oauth2GoogleAuthenticator) callback(w http.ResponseWriter, r *http.Request) {
+	log.Println("hit callback")
 	oauthState, err := r.Cookie("oauthstate")
 	if err != nil {
 		log.Println(err)
@@ -267,6 +277,7 @@ func (a *Oauth2GoogleAuthenticator) callback(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	log.Println("getting user data from google")
 	data, err := getUserDataFromGoogle(r.FormValue("code"))
 	if err != nil {
 		log.Println(err.Error())
@@ -293,20 +304,32 @@ func (a *Oauth2GoogleAuthenticator) callback(w http.ResponseWriter, r *http.Requ
 	session, _ := a.store.Get(r, "oauthstate")
 
 	// setup the session
+	log.Println("saving session")
 	session.Values["authenticated"] = true
 	session.Values["name"] = authData.Name
 	session.Values["email"] = authData.Email
+	log.Println(session)
 
 	session.Save(r, w)
 
 	log.Println("authenticated:", r.RemoteAddr)
 
-	err = a.authCallback(w, r)
-	if err != nil {
-		log.Println(err.Error())
-		http.Error(w, "", http.StatusInternalServerError)
-		return
+	if a.authCallback != nil {
+		log.Println("running auth call back")
+		err = a.authCallback(w, r)
+		if err != nil {
+			log.Println(err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
+			return
+		}
 	}
-	http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+
+	log.Println("redirecting after authentication")
+	w.Header().Set("Cache-Control", "no-cache, private, max-age=0")
+	w.Header().Set("Expires", time.Unix(0, 0).Format(http.TimeFormat))
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("X-Accel-Expires", "0")
+
+	http.Redirect(w, r, "/", http.StatusPermanentRedirect)
 	return
 }
