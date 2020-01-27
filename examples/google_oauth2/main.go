@@ -29,6 +29,7 @@ func main() {
 	`)
 
 	helloWorld := func(w http.ResponseWriter, r *http.Request) {
+		log.Println("hit hello world")
 		v, ok := authenticator.ReadSessionValue(w, r, "name")
 		if ok {
 			tmpl.Execute(w, v)
